@@ -1,39 +1,27 @@
+server:
+  port: 8080
+
 spring:
-  application:
-    name: api-gateway
-  redis:
-    host: localhost
-    port: 6379
   cloud:
     gateway:
+      default-filters:
+        - TokenRelay
       routes:
         - id: auth-service
-          uri: lb://AUTH-SERVICE
+          uri: http://localhost:8081
           predicates:
             - Path=/auth/**
-
         - id: user-service
-          uri: lb://USER-SERVICE
+          uri: http://localhost:8082
           predicates:
-            - Path=/user/**
+            - Path=/users/**
+          filters:
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 10  # Requests per second
+                redis-rate-limiter.burstCapacity: 20  # Maximum burst
+                key-resolver: "#{@userKeyResolver}"
 
-      filters:
-        - name: RequestRateLimiter
-          args:
-            redis-rate-limiter.replenishRate: 10
-            redis-rate-limiter.burstCapacity: 20
-
-  security:
-    oauth2:
-      client:
-        registration:
-          google:
-            client-id: your-client-id
-            client-secret: your-client-secret
-            scope: profile, email
-            redirect-uri: "{baseUrl}/login/oauth2/code/google"
-            authorization-grant-type: authorization_code
-            client-name: Google
 springdoc:
   api-docs:
     path: /v3/api-docs
